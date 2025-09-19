@@ -211,9 +211,110 @@ export default function CalendarView({ view, onViewChange }: CalendarViewProps) 
   const navigateMonth = (direction: number) => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + direction);
+      if (view === 'week') {
+        newDate.setDate(prev.getDate() + (direction * 7));
+      } else if (view === 'day') {
+        newDate.setDate(prev.getDate() + direction);
+      } else {
+        newDate.setMonth(prev.getMonth() + direction);
+      }
       return newDate;
     });
+  };
+
+  const getWeekDays = () => {
+    const startOfWeek = new Date(currentDate);
+    const day = startOfWeek.getDay();
+    startOfWeek.setDate(currentDate.getDate() - day);
+    
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+
+  const renderWeekView = () => {
+    const weekDays = getWeekDays();
+    
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div key={day} className="p-2 text-center font-medium text-muted-foreground border-b">
+            {day}
+          </div>
+        ))}
+        {weekDays.map((date, index) => (
+          <div
+            key={index}
+            className="min-h-[200px] p-2 border border-border/50 rounded-lg bg-background cursor-pointer hover:bg-secondary/50 transition-colors"
+            onClick={() => {
+              setSelectedDate(date);
+              setIsDialogOpen(true);
+            }}
+          >
+            <div className="font-medium mb-2 text-center">
+              {date.getDate()}
+            </div>
+            <div className="space-y-1">
+              {getBlocksForDate(date).map((block, idx) => (
+                <div
+                  key={idx}
+                  className="text-xs p-1 rounded text-white truncate"
+                  style={{ backgroundColor: block.color }}
+                >
+                  {formatTime(block.start_time)} {block.title}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderDayView = () => {
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const dayBlocks = getBlocksForDate(currentDate);
+    
+    return (
+      <div className="space-y-1">
+        {hours.map(hour => (
+          <div key={hour} className="flex border-b border-border/20">
+            <div className="w-16 p-2 text-sm text-muted-foreground">
+              {hour.toString().padStart(2, '0')}:00
+            </div>
+            <div className="flex-1 min-h-[60px] p-2 hover:bg-secondary/30 cursor-pointer transition-colors"
+                 onClick={() => {
+                   setSelectedDate(currentDate);
+                   setNewBlock(prev => ({
+                     ...prev,
+                     start_time: `${hour.toString().padStart(2, '0')}:00`,
+                     end_time: `${(hour + 1).toString().padStart(2, '0')}:00`
+                   }));
+                   setIsDialogOpen(true);
+                 }}>
+              {dayBlocks
+                .filter(block => new Date(block.start_time).getHours() === hour)
+                .map((block, idx) => (
+                  <div
+                    key={idx}
+                    className="text-xs p-2 rounded text-white mb-1"
+                    style={{ backgroundColor: block.color }}
+                  >
+                    <div className="font-medium">{block.title}</div>
+                    <div className="opacity-80">
+                      {formatTime(block.start_time)} - {formatTime(block.end_time)}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const categoryColors = {
@@ -226,7 +327,7 @@ export default function CalendarView({ view, onViewChange }: CalendarViewProps) 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-background via-background to-secondary/10 min-h-screen">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
@@ -238,7 +339,12 @@ export default function CalendarView({ view, onViewChange }: CalendarViewProps) 
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-2xl font-bold">
-            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {view === 'day' 
+              ? currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+              : view === 'week'
+              ? `Week of ${getWeekDays()[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+              : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+            }
           </h2>
           <Button
             variant="outline"
@@ -275,7 +381,7 @@ export default function CalendarView({ view, onViewChange }: CalendarViewProps) 
           <Button
             onClick={generateAISchedule}
             disabled={isAIScheduling}
-            className="bg-gradient-primary hover:opacity-90"
+            className="bg-gradient-primary hover:opacity-90 shadow-glow"
           >
             <Bot className="h-4 w-4 mr-2" />
             {isAIScheduling ? 'Generating...' : 'AI Schedule'}
@@ -284,64 +390,71 @@ export default function CalendarView({ view, onViewChange }: CalendarViewProps) 
       </div>
 
       {/* Calendar Grid */}
-      <Card className="bg-gradient-card border-0 shadow-soft">
+      <Card className="bg-gradient-card border-0 shadow-soft backdrop-blur-sm">
         <CardContent className="p-6">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 mb-4">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="p-2 text-center font-medium text-muted-foreground">
-                {day}
+          {view === 'month' && (
+            <>
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-1 mb-4">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="p-2 text-center font-medium text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1">
-            {getDaysInMonth().map((date, index) => (
-              <div
-                key={index}
-                className={`min-h-[120px] p-2 border border-border/50 rounded-lg transition-colors cursor-pointer hover:bg-secondary/50 ${
-                  date ? 'bg-background' : ''
-                }`}
-                onClick={() => {
-                  if (date) {
-                    setSelectedDate(date);
-                    setIsDialogOpen(true);
-                  }
-                }}
-              >
-                {date && (
-                  <>
-                    <div className="font-medium mb-2">
-                      {date.getDate()}
-                    </div>
-                    <div className="space-y-1">
-                      {getBlocksForDate(date).slice(0, 3).map((block, idx) => (
-                        <div
-                          key={idx}
-                          className="text-xs p-1 rounded text-white truncate"
-                          style={{ backgroundColor: block.color }}
-                        >
-                          {formatTime(block.start_time)} {block.title}
+              {/* Calendar days */}
+              <div className="grid grid-cols-7 gap-1">
+                {getDaysInMonth().map((date, index) => (
+                  <div
+                    key={index}
+                    className={`min-h-[120px] p-2 border border-border/50 rounded-lg transition-all duration-200 cursor-pointer hover:bg-secondary/50 hover:shadow-soft transform hover:scale-[1.02] ${
+                      date ? 'bg-background' : ''
+                    }`}
+                    onClick={() => {
+                      if (date) {
+                        setSelectedDate(date);
+                        setIsDialogOpen(true);
+                      }
+                    }}
+                  >
+                    {date && (
+                      <>
+                        <div className="font-medium mb-2">
+                          {date.getDate()}
                         </div>
-                      ))}
-                      {getBlocksForDate(date).length > 3 && (
-                        <div className="text-xs text-muted-foreground">
-                          +{getBlocksForDate(date).length - 3} more
+                        <div className="space-y-1">
+                          {getBlocksForDate(date).slice(0, 3).map((block, idx) => (
+                            <div
+                              key={idx}
+                              className="text-xs p-1 rounded text-white truncate shadow-soft"
+                              style={{ backgroundColor: block.color }}
+                            >
+                              {formatTime(block.start_time)} {block.title}
+                            </div>
+                          ))}
+                          {getBlocksForDate(date).length > 3 && (
+                            <div className="text-xs text-muted-foreground">
+                              +{getBlocksForDate(date).length - 3} more
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+          
+          {view === 'week' && renderWeekView()}
+          {view === 'day' && renderDayView()}
         </CardContent>
       </Card>
 
       {/* Add Event Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-gradient-card border-0 shadow-large backdrop-blur-sm">
           <DialogHeader>
             <DialogTitle>
               Add Schedule Block for {selectedDate?.toLocaleDateString()}
@@ -414,10 +527,10 @@ export default function CalendarView({ view, onViewChange }: CalendarViewProps) 
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="hover:shadow-soft">
                 Cancel
               </Button>
-              <Button onClick={saveScheduleBlock}>
+              <Button onClick={saveScheduleBlock} className="bg-gradient-primary hover:opacity-90 shadow-soft">
                 Save Event
               </Button>
             </div>
