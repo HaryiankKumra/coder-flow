@@ -9,7 +9,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-          Welcome back, Haryian!
+          Welcome back, Haryiank!
         </h1>
         <p className="text-muted-foreground">
           Here's your productivity overview for today
@@ -102,7 +102,11 @@ export default function Dashboard() {
                 </span>
               </div>
             ))}
-            <Button className="w-full mt-4 bg-gradient-primary hover:opacity-90" size="sm">
+            <Button 
+              className="w-full mt-4 bg-gradient-primary hover:opacity-90" 
+              size="sm"
+              onClick={() => window.location.href = '/todo'}
+            >
               View All Tasks
             </Button>
           </CardContent>
@@ -134,7 +138,11 @@ export default function Dashboard() {
                 />
               </div>
             ))}
-            <Button className="w-full mt-4 bg-gradient-primary hover:opacity-90" size="sm">
+            <Button 
+              className="w-full mt-4 bg-gradient-primary hover:opacity-90" 
+              size="sm"
+              onClick={() => window.location.href = '/leetcode'}
+            >
               Practice Problems
             </Button>
           </CardContent>
@@ -192,7 +200,11 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
-            <Button className="w-full mt-4 bg-gradient-primary hover:opacity-90" size="sm">
+            <Button 
+              className="w-full mt-4 bg-gradient-primary hover:opacity-90" 
+              size="sm"
+              onClick={() => window.location.href = '/schedule'}
+            >
               View Full Schedule
             </Button>
           </CardContent>
