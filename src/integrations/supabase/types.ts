@@ -410,6 +410,54 @@ export type Database = {
         }
         Relationships: []
       }
+      leetcode_progress: {
+        Row: {
+          attempts: number | null
+          category: string
+          created_at: string
+          difficulty: string
+          id: string
+          is_solved: boolean | null
+          notes: string | null
+          problem_slug: string
+          problem_title: string
+          problem_url: string
+          solved_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          category: string
+          created_at?: string
+          difficulty: string
+          id?: string
+          is_solved?: boolean | null
+          notes?: string | null
+          problem_slug: string
+          problem_title: string
+          problem_url: string
+          solved_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number | null
+          category?: string
+          created_at?: string
+          difficulty?: string
+          id?: string
+          is_solved?: boolean | null
+          notes?: string | null
+          problem_slug?: string
+          problem_title?: string
+          problem_url?: string
+          solved_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           action_url: string | null
@@ -476,6 +524,51 @@ export type Database = {
           name?: string
           phone?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      schedule_blocks: {
+        Row: {
+          category: string
+          color: string | null
+          created_at: string
+          description: string | null
+          end_time: string
+          id: string
+          is_all_day: boolean | null
+          start_time: string
+          task_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_time: string
+          id?: string
+          is_all_day?: boolean | null
+          start_time: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          is_all_day?: boolean | null
+          start_time?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -599,6 +692,87 @@ export type Database = {
         }
         Relationships: []
       }
+      study_sessions: {
+        Row: {
+          category: string | null
+          completed_at: string
+          created_at: string
+          duration: number
+          id: string
+          notes: string | null
+          session_type: string
+          started_at: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          completed_at: string
+          created_at?: string
+          duration: number
+          id?: string
+          notes?: string | null
+          session_type?: string
+          started_at: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          completed_at?: string
+          created_at?: string
+          duration?: number
+          id?: string
+          notes?: string | null
+          session_type?: string
+          started_at?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_duration: number | null
+          id: string
+          priority: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_duration?: number | null
+          id?: string
+          priority?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_duration?: number | null
+          id?: string
+          priority?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       test_results: {
         Row: {
           admission_no: string | null
@@ -707,6 +881,45 @@ export type Database = {
           user_id?: string
           water_intake_target?: number | null
           weight?: number | null
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          daily_study_goal: number | null
+          id: string
+          long_break_duration: number | null
+          pomodoro_duration: number | null
+          preferred_categories: string[] | null
+          short_break_duration: number | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_study_goal?: number | null
+          id?: string
+          long_break_duration?: number | null
+          pomodoro_duration?: number | null
+          preferred_categories?: string[] | null
+          short_break_duration?: number | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_study_goal?: number | null
+          id?: string
+          long_break_duration?: number | null
+          pomodoro_duration?: number | null
+          preferred_categories?: string[] | null
+          short_break_duration?: number | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
