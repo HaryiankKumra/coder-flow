@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
 
 export interface Task {
   id: string;
@@ -8,65 +7,61 @@ export interface Task {
   description?: string;
   status: 'pending' | 'in_progress' | 'completed';
   priority: 'low' | 'medium' | 'high';
+  category?: string;
   due_date?: string;
-  category: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
 }
 
 export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   const fetchTasks = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setTasks(data || []);
-    } catch (error: any) {
+      if (error) {
+        console.error('Error fetching tasks:', error);
+      } else {
+        setTasks(data || []);
+      }
+    } catch (error) {
       console.error('Error fetching tasks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch tasks",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const addTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
+  const createTask = async (task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
 
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{ ...taskData, user_id: user.data.user.id }])
+        .insert([{ ...task, user_id: session.user.id }])
         .select()
         .single();
 
       if (error) throw error;
       
       setTasks(prev => [data, ...prev]);
-      toast({
-        title: "Success",
-        description: "Task created successfully",
-      });
-      
       return data;
-    } catch (error: any) {
-      console.error('Error adding task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create task",
-        variant: "destructive",
-      });
+    } catch (error) {
+      console.error('Error creating task:', error);
       throw error;
     }
   };
@@ -75,7 +70,7 @@ export const useTasks = () => {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .update(updates)
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
@@ -84,13 +79,8 @@ export const useTasks = () => {
       
       setTasks(prev => prev.map(task => task.id === id ? data : task));
       return data;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update task",
-        variant: "destructive",
-      });
       throw error;
     }
   };
@@ -105,47 +95,22 @@ export const useTasks = () => {
       if (error) throw error;
       
       setTasks(prev => prev.filter(task => task.id !== id));
-      toast({
-        title: "Success",
-        description: "Task deleted successfully",
-      });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete task",
-        variant: "destructive",
-      });
       throw error;
     }
   };
 
   useEffect(() => {
     fetchTasks();
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('tasks_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'tasks' },
-        (payload) => {
-          console.log('Real-time task update:', payload);
-          fetchTasks(); // Refetch tasks on any change
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   return {
     tasks,
     loading,
-    addTask,
+    createTask,
     updateTask,
     deleteTask,
-    refetch: fetchTasks,
+    refetch: fetchTasks
   };
 };

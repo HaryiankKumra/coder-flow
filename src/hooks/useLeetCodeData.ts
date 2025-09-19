@@ -1,57 +1,68 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from 'react';
 
-interface LeetCodeProblem {
-  problem_title: string;
-  problem_slug: string;
-  problem_url: string;
-  category: string;
-  difficulty: string;
-  is_premium: boolean;
-}
+export const useLeetCodeData = (username: string = 'your_leetcode_username') => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-interface LeetCodeStats {
-  username: string;
-  submitStatsGlobal: {
-    acSubmissionNum: Array<{
-      difficulty: string;
-      count: number;
-      submissions: number;
-    }>;
-  };
-  profile: {
-    realName: string;
-    aboutMe: string;
-    userAvatar: string;
-    ranking: number;
-  };
-}
-
-export const useLeetCodeData = (username: string = 'haryiank') => {
-  return useQuery({
-    queryKey: ['leetcode-data', username],
-    queryFn: async () => {
-      console.log('Fetching LeetCode data for:', username);
-      
-      const { data, error } = await supabase.functions.invoke('fetch-leetcode-data', {
-        body: { username }
-      });
-
-      if (error) {
-        console.error('Error fetching LeetCode data:', error);
-        throw new Error(error.message || 'Failed to fetch LeetCode data');
+  useEffect(() => {
+    const fetchLeetCodeData = async () => {
+      try {
+        setLoading(true);
+        
+        // Using a public LeetCode API endpoint
+        const response = await fetch(`https://leetcode-stats-api.herokuapp.com/${username}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch LeetCode data');
+        }
+        
+        const result = await response.json();
+        
+        // Transform the data to match our expected format
+        const transformedData = {
+          userStats: {
+            submitStatsGlobal: {
+              acSubmissionNum: [
+                { difficulty: 'Easy', count: result.easySolved || 0 },
+                { difficulty: 'Medium', count: result.mediumSolved || 0 },
+                { difficulty: 'Hard', count: result.hardSolved || 0 }
+              ]
+            }
+          },
+          totalProblems: result.totalSolved || 0,
+          totalQuestions: result.totalQuestions || 2500,
+          contributionPoints: result.contributionPoints || 0,
+          reputation: result.reputation || 0
+        };
+        
+        setData(transformedData);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching LeetCode data:', err);
+        setError(err.message);
+        
+        // Fallback to mock data if API fails
+        setData({
+          userStats: {
+            submitStatsGlobal: {
+              acSubmissionNum: [
+                { difficulty: 'Easy', count: 0 },
+                { difficulty: 'Medium', count: 0 },
+                { difficulty: 'Hard', count: 0 }
+              ]
+            }
+          },
+          totalProblems: 0,
+          totalQuestions: 2500
+        });
+      } finally {
+        setLoading(false);
       }
+    };
 
-      console.log('LeetCode data received:', data);
-      return data as {
-        success: boolean;
-        userStats: LeetCodeStats | null;
-        problems: LeetCodeProblem[];
-        totalProblems: number;
-      };
-    },
-    staleTime: 1000 * 60 * 60, // 1 hour
-    gcTime: 1000 * 60 * 60 * 24, // 24 hours
-    retry: 2
-  });
+    fetchLeetCodeData();
+  }, [username]);
+
+  return { data, loading, error };
 };

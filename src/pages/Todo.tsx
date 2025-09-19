@@ -1,368 +1,307 @@
-import { useState } from "react";
-import { Plus, CheckSquare, Square, Trash2, Edit3, Calendar, Flag } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  priority: "low" | "medium" | "high";
-  category: string;
-  dueDate?: string;
-  createdAt: string;
-}
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useTasks } from '@/hooks/useTasks';
+import { useToast } from '@/components/ui/use-toast';
+import { Plus, Trash2, Edit, CheckSquare, Loader2, Calendar, AlertCircle } from 'lucide-react';
 
 export default function Todo() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Complete React project setup",
-      description: "Set up the basic structure for the productivity app",
-      completed: true,
-      priority: "high",
-      category: "Development",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      title: "Solve 3 LeetCode problems",
-      description: "Focus on dynamic programming problems",
-      completed: true,
-      priority: "medium",
-      category: "Learning",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "3",
-      title: "Review system design concepts",
-      description: "Study scalability patterns and database design",
-      completed: false,
-      priority: "high",
-      category: "Learning",
-      dueDate: "2024-01-20",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "4",
-      title: "Practice data structures",
-      description: "Trees, graphs, and hash tables",
-      completed: false,
-      priority: "medium",
-      category: "Learning",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "5",
-      title: "Work on portfolio website",
-      description: "Update projects section and add new features",
-      completed: false,
-      priority: "low",
-      category: "Personal",
-      dueDate: "2024-01-25",
-      createdAt: new Date().toISOString(),
-    },
-  ]);
-
-  const [newTask, setNewTask] = useState<{
-    title: string;
-    description: string;
-    priority: "low" | "medium" | "high";
-    category: string;
-    dueDate: string;
-  }>({
-    title: "",
-    description: "",
-    priority: "medium",
-    category: "General",
-    dueDate: "",
+  const { tasks, loading, createTask, updateTask, deleteTask } = useTasks();
+  const { toast } = useToast();
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    due_date: '',
+    category: ''
   });
+  const [isCreating, setIsCreating] = useState(false);
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
-
-  const addTask = () => {
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newTask.title.trim()) return;
 
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask.title,
-      description: newTask.description,
-      completed: false,
-      priority: newTask.priority,
-      category: newTask.category,
-      dueDate: newTask.dueDate || undefined,
-      createdAt: new Date().toISOString(),
-    };
-
-    setTasks(prev => [task, ...prev]);
-    setNewTask({
-      title: "",
-      description: "",
-      priority: "medium",
-      category: "General",
-      dueDate: "",
-    });
-    setIsAddDialogOpen(false);
+    setIsCreating(true);
+    try {
+      await createTask({
+        title: newTask.title.trim(),
+        description: newTask.description.trim() || undefined,
+        status: 'pending',
+        priority: newTask.priority as 'low' | 'medium' | 'high',
+        due_date: newTask.due_date || undefined,
+        category: newTask.category.trim() || undefined,
+      });
+      
+      setNewTask({
+        title: '',
+        description: '',
+        priority: 'medium',
+        due_date: '',
+        category: ''
+      });
+      
+      toast({
+        title: "Task Created! ✅",
+        description: "Your new task has been added successfully.",
+      });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const toggleTask = (id: string) => {
-    setTasks(prev => prev.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
+  const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+      await updateTask(taskId, { status: newStatus });
+      
+      toast({
+        title: newStatus === 'completed' ? "Task Completed! 🎉" : "Task Reopened",
+        description: "Task status updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task status.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(task => task.id !== id));
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      toast({
+        title: "Task Deleted",
+        description: "Task has been removed successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high": return "bg-destructive/10 text-destructive border-destructive/20";
-      case "medium": return "bg-warning/10 text-warning border-warning/20";
-      case "low": return "bg-success/10 text-success border-success/20";
-      default: return "bg-muted";
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-blue-100 text-blue-800';
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
-    switch (filter) {
-      case "active": return !task.completed;
-      case "completed": return task.completed;
-      default: return true;
-    }
-  });
-
-  const completedCount = tasks.filter(task => task.completed).length;
-  const totalCount = tasks.length;
-  const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center gap-2">
-            <CheckSquare className="h-8 w-8 text-success" />
-            Task Manager
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Organize and track your daily tasks efficiently
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-success">{completedCount}</div>
-            <div className="text-sm text-muted-foreground">Completed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-primary">{Math.round(completionRate)}%</div>
-            <div className="text-sm text-muted-foreground">Progress</div>
-          </div>
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Todo List</h1>
+        <span className="text-muted-foreground">
+          {tasks.filter(t => t.status === 'completed').length} of {tasks.length} completed
+        </span>
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-2">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("all")}
-          >
-            All ({totalCount})
-          </Button>
-          <Button
-            variant={filter === "active" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("active")}
-          >
-            Active ({totalCount - completedCount})
-          </Button>
-          <Button
-            variant={filter === "completed" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter("completed")}
-          >
-            Completed ({completedCount})
-          </Button>
-        </div>
-
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-primary hover:opacity-90">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Task</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+      {/* Add New Task Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Add New Task
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateTask} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Title</Label>
+                <label className="text-sm font-medium">Task Title *</label>
                 <Input
-                  value={newTask.title}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="Enter task title..."
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  disabled={isCreating}
+                  required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={newTask.description}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Add task description..."
-                  rows={3}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <Select
-                    value={newTask.priority}
-                    onValueChange={(value: "low" | "medium" | "high") => 
-                      setNewTask(prev => ({ ...prev, priority: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Input
-                    value={newTask.category}
-                    onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="e.g., Development"
-                  />
-                </div>
+                <label className="text-sm font-medium">Priority</label>
+                <Select 
+                  value={newTask.priority} 
+                  onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                  disabled={isCreating}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        Low
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                        Medium
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="high">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        High
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="space-y-2">
-                <Label>Due Date (Optional)</Label>
+                <label className="text-sm font-medium">Due Date</label>
                 <Input
-                  type="date"
-                  value={newTask.dueDate}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, dueDate: e.target.value }))}
+                  type="datetime-local"
+                  value={newTask.due_date}
+                  onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                  disabled={isCreating}
                 />
               </div>
               
-              <div className="flex gap-2 pt-4">
-                <Button onClick={addTask} className="flex-1 bg-gradient-primary hover:opacity-90">
-                  Add Task
-                </Button>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Category</label>
+                <Input
+                  placeholder="e.g., Study, Work, Personal"
+                  value={newTask.category}
+                  onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
+                  disabled={isCreating}
+                />
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                placeholder="Enter task description (optional)..."
+                value={newTask.description}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                disabled={isCreating}
+                rows={3}
+              />
+            </div>
+            
+            <Button type="submit" disabled={isCreating || !newTask.title.trim()} className="w-full">
+              {isCreating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Add Task
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Tasks List */}
-      <Card className="bg-gradient-card border-0 shadow-soft">
-        <CardContent className="pt-6">
-          <div className="space-y-3">
-            {filteredTasks.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <CheckSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No tasks found</p>
-                <p className="text-sm">
-                  {filter === "all" 
-                    ? "Add your first task to get started" 
-                    : `No ${filter} tasks at the moment`
-                  }
-                </p>
-              </div>
-            ) : (
-              filteredTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex items-start gap-3 p-4 rounded-lg bg-secondary/20 hover:bg-secondary/40 transition-colors duration-200 group"
-                >
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : tasks.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <CheckSquare className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
+              <p className="text-muted-foreground">Create your first task to get started!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          tasks.map((task) => (
+            <Card key={task.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
                   <button
-                    onClick={() => toggleTask(task.id)}
-                    className="flex-shrink-0 mt-1"
+                    onClick={() => toggleTaskStatus(task.id, task.status)}
+                    className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                      task.status === 'completed'
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : 'border-gray-300 hover:border-primary'
+                    }`}
                   >
-                    {task.completed ? (
-                      <CheckSquare className="h-5 w-5 text-success" />
-                    ) : (
-                      <Square className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+                    {task.status === 'completed' && (
+                      <CheckSquare className="h-3 w-3" />
                     )}
                   </button>
                   
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <h3 className={`font-medium text-sm ${
-                          task.completed ? 'line-through text-muted-foreground' : ''
-                        }`}>
-                          {task.title}
-                        </h3>
-                        {task.description && (
-                          <p className={`text-sm mt-1 ${
-                            task.completed ? 'line-through text-muted-foreground' : 'text-muted-foreground'
-                          }`}>
-                            {task.description}
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge className={getPriorityColor(task.priority)} variant="outline">
-                            <Flag className="h-3 w-3 mr-1" />
-                            {task.priority}
-                          </Badge>
-                          <Badge variant="outline">{task.category}</Badge>
-                          {task.dueDate && (
-                            <Badge variant="outline" className="text-xs">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {new Date(task.dueDate).toLocaleDateString()}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          onClick={() => deleteTask(task.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  <div className="flex-1">
+                    <h3 className={`font-medium ${
+                      task.status === 'completed' ? 'line-through text-muted-foreground' : ''
+                    }`}>
+                      {task.title}
+                    </h3>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {task.description}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Badge className={getStatusColor(task.status)}>
+                        {task.status.replace('_', ' ')}
+                      </Badge>
+                      <Badge className={getPriorityColor(task.priority)}>
+                        {task.priority} priority
+                      </Badge>
+                      {task.category && (
+                        <Badge variant="outline">
+                          {task.category}
+                        </Badge>
+                      )}
+                      {task.due_date && (
+                        <Badge variant="outline" className={
+                          new Date(task.due_date) < new Date() && task.status !== 'completed'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : ''
+                        }>
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {new Date(task.due_date).toLocaleDateString()}
+                        </Badge>
+                      )}
                     </div>
                   </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Play, Pause, Square, RotateCcw, Clock, Coffee, Settings } from "lucide-react";
+import { Play, Pause, Square, RotateCcw, Clock, Coffee, Settings, Timer as TimerIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -345,6 +345,23 @@ export default function Timer() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Coming Soon Timer Page */}
+      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+        <div className="flex items-center gap-2">
+          <TimerIcon className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl lg:text-3xl font-bold">Pomodoro Timer</h1>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Timer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">Timer feature coming soon...</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
