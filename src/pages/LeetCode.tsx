@@ -14,7 +14,7 @@ export default function LeetCode() {
   const [searchTerm, setSearchTerm] = useState("");
   const [userProgress, setUserProgress] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const { data: leetcodeData, isLoading: isDataLoading, error } = useLeetCodeData();
+  const { data: leetcodeData, loading: isDataLoading, error } = useLeetCodeData();
   const { toast } = useToast();
 
   // LeetCode 75 problem list with categories
