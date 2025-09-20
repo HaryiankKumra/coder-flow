@@ -4,15 +4,17 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/hooks/useTasks";
 import { useLeetCodeData } from "@/hooks/useLeetCodeData";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const { tasks, loading: tasksLoading, updateTask } = useTasks();
   const { data: leetcodeData } = useLeetCodeData();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
 
   const todaysTasks = tasks.filter(task => {
@@ -222,7 +224,7 @@ export default function Dashboard() {
             <Button 
               className="w-full mt-4 bg-gradient-primary hover:opacity-90 shadow-soft" 
               size="sm"
-              onClick={() => window.location.href = '/todo'}
+              onClick={() => navigate('/todo')}
             >
               View All Tasks
             </Button>
@@ -265,7 +267,7 @@ export default function Dashboard() {
             <Button 
               className="w-full mt-4 bg-gradient-primary hover:opacity-90 shadow-soft" 
               size="sm"
-              onClick={() => window.location.href = '/leetcode'}
+              onClick={() => navigate('/leetcode')}
             >
               Practice Problems
             </Button>
@@ -314,7 +316,7 @@ export default function Dashboard() {
           <CardContent className="space-y-3 p-4 lg:p-6 pt-0">
             <Button 
               className="w-full justify-start bg-gradient-primary hover:opacity-90 shadow-soft" 
-              onClick={() => window.location.href = '/schedule'}
+              onClick={() => navigate('/schedule')}
             >
               <Calendar className="h-4 w-4 mr-2" />
               View Schedule
@@ -322,7 +324,7 @@ export default function Dashboard() {
             <Button 
               className="w-full justify-start bg-gradient-secondary hover:opacity-90" 
               variant="outline"
-              onClick={() => window.location.href = '/timer'}
+              onClick={() => navigate('/timer')}
             >
               <Timer className="h-4 w-4 mr-2" />
               Start Timer
@@ -330,7 +332,7 @@ export default function Dashboard() {
             <Button 
               className="w-full justify-start bg-gradient-secondary hover:opacity-90" 
               variant="outline"
-              onClick={() => window.location.href = '/todo'}
+              onClick={() => navigate('/todo')}
             >
               <CheckSquare className="h-4 w-4 mr-2" />
               Add Task

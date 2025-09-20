@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/ui/theme-provider";
 import { LogOut, Home, Calendar, CheckSquare, Timer, Code2, Menu, Sun, Moon, Monitor } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
