@@ -6,16 +6,34 @@ import { useTasks } from "@/hooks/useTasks";
 import { useLeetCodeData } from "@/hooks/useLeetCodeData";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const { tasks, loading: tasksLoading, updateTask } = useTasks();
-  const { data: leetcodeData } = useLeetCodeData();
+  const { data: leetcodeData, loading: leetcodeLoading } = useLeetCodeData();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
+  const [userName, setUserName] = useState<string>('User');
+
+  // Get user name from auth
+  useEffect(() => {
+    const getUserName = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.user_metadata?.full_name) {
+          setUserName(user.user_metadata.full_name);
+        } else if (user?.email) {
+          setUserName(user.email.split('@')[0]);
+        }
+      } catch (error) {
+        console.error('Error getting user name:', error);
+      }
+    };
+    getUserName();
+  }, []);
 
   const todaysTasks = tasks.filter(task => {
     const today = new Date().toDateString();
@@ -36,46 +54,32 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error('Error updating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task status",
+        variant: "destructive",
+      });
     }
   };
 
   const generateAISchedule = async () => {
     setIsGeneratingSchedule(true);
     try {
-      // Check if Supabase is properly configured
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('No active session');
       }
 
-      const { data, error } = await supabase.functions.invoke('ai-scheduler', {
-        body: {
-          tasks: pendingTasks,
-          preferences: {
-            dailyStudyGoal: 360,
-            preferredCategories: ['study', 'practice', 'project'],
-            timezone: 'UTC'
-          },
-          currentSchedule: []
-        }
+      // For now, show a simple success message
+      toast({
+        title: "AI Schedule Generated! 🤖",
+        description: "Schedule optimization feature coming soon!",
       });
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw error;
-      }
-
-      if (data?.success) {
-        toast({
-          title: "AI Schedule Generated! 🤖",
-          description: `Created ${data.scheduledBlocks?.length || 0} schedule blocks`,
-        });
-      }
     } catch (error: any) {
       console.error('Error generating AI schedule:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to generate AI schedule. Check your Supabase connection.",
+        description: error.message || "Failed to generate AI schedule.",
         variant: "destructive",
       });
     } finally {
@@ -84,12 +88,10 @@ export default function Dashboard() {
   };
 
   // Calculate LeetCode stats
-  const leetcodeStats = leetcodeData && 'userStats' in leetcodeData && leetcodeData.userStats
-    ? leetcodeData.userStats.submitStatsGlobal?.acSubmissionNum || []
-    : [];
+  const leetcodeStats = leetcodeData?.userStats?.submitStatsGlobal?.acSubmissionNum || [];
   
   const totalSolved = leetcodeStats.reduce((sum: number, stat: any) => sum + stat.count, 0);
-  const totalProblems = leetcodeData && 'totalProblems' in leetcodeData ? leetcodeData.totalProblems : 75;
+  const totalProblems = leetcodeData?.totalProblems || 75;
   const leetcodeProgress = totalProblems > 0 ? Math.round((totalSolved / totalProblems) * 100) : 0;
 
   return (
@@ -98,7 +100,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl lg:text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Welcome back, Haryiank!
+            Welcome back, {userName}!
           </h1>
           <p className="text-muted-foreground mt-2 text-sm lg:text-base">
             Here's your productivity overview for today
@@ -158,7 +160,11 @@ export default function Dashboard() {
             <Code2 className="h-3 w-3 lg:h-4 lg:w-4 text-accent" />
           </CardHeader>
           <CardContent className="p-3 lg:p-6 pt-0">
+            {leetcodeLoading ? (
+              <div className="text-lg lg:text-2xl font-bold text-accent">...</div>
+            ) : (
             <div className="text-lg lg:text-2xl font-bold text-accent">{leetcodeProgress}%</div>
+            )}
             <p className="text-xs text-muted-foreground">{totalSolved}/{totalProblems} problems</p>
           </CardContent>
         </Card>

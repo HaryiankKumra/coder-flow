@@ -53,123 +53,81 @@ class AppErrorBoundary extends Component<{ children?: any }, { hasError: boolean
   }
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-// Minimal UI used in Safe Mode (?safe=1)
-const SafeDashboard = () => (
-  <div className="min-h-screen bg-gray-50 p-6">
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">CoderFlow (Safe Mode)</h1>
-      <p className="text-gray-600 mb-6">App loaded without external integrations.</p>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="font-semibold mb-2">Status</h2>
-          <ul className="text-sm text-gray-600 list-disc pl-5">
-            <li>Router OK</li>
-            <li>Tailwind OK</li>
-            <li>Rendering OK</li>
-          </ul>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="font-semibold mb-2">Next Steps</h2>
-          <ul className="text-sm text-gray-600 list-disc pl-5">
-            <li>Remove ?safe=1 to restore full app</li>
-            <li>Check console for lazy import errors</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+// Simple loading component
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
   </div>
 );
-const SafeLayout = () => <SafeDashboard />;
 
 const App = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [appError, setAppError] = useState<Error | null>(null);
-
-  // Detect Safe Mode (?safe=1)
-  const safeMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("safe") === "1";
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Surface unexpected errors instead of blank screen
-    const onError = (e: ErrorEvent) => {
-      console.error("Window error:", e.error || e.message);
-      setAppError(e.error || new Error(e.message));
-    };
-    const onRejection = (e: PromiseRejectionEvent) => {
-      console.error("Unhandled rejection:", e.reason);
-      setAppError(e.reason instanceof Error ? e.reason : new Error(String(e.reason)));
-    };
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onRejection);
-    return () => {
-      window.removeEventListener("error", onError);
-      window.removeEventListener("unhandledrejection", onRejection);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (safeMode) {
-      setLoading(false);
-      setUser({ id: "safe-mode" }); // bypass auth in safe mode
-      return;
-    }
-
-    let unsub: (() => void) | undefined;
     const init = async () => {
-      // Timeout guard so we don’t hang forever on white screen
-      const timeout = new Promise<never>((_, rej) =>
-        setTimeout(() => rej(new Error("Auth init timeout")), 6000)
-      );
-
       try {
-        const sessionPromise = (async () => {
-          try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) throw error;
-            setUser(session?.user || null);
-          } catch (e: any) {
-            console.warn("getSession failed:", e?.message || e);
-            setUser(null);
-          } finally {
-            setLoading(false);
-          }
-        })();
+        // Test database connection first
+        const { error: connectionTestError } = await supabase
+          .from('user_settings')
+          .select('id')
+          .limit(1);
+        
+        if (connectionTestError && !connectionTestError.message.includes('RLS')) {
+          throw new Error(`Database connection failed: ${connectionTestError.message}`);
+        }
 
-        await Promise.race([sessionPromise, timeout]);
+        // Get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn("Auth session error:", error.message);
+        }
+        
+        setUser(session?.user || null);
+        setConnectionError(null);
 
         // Subscribe to auth changes safely
-        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
           setUser(session?.user || null);
-          setLoading(false);
         });
-        unsub = () => data.subscription.unsubscribe();
+        
+        return () => authListener.subscription.unsubscribe();
       } catch (e: any) {
-        console.error("Auth init error:", e);
-        setAppError(e instanceof Error ? e : new Error(String(e)));
+        console.error("App initialization error:", e);
+        setConnectionError(e.message);
         setUser(null);
+      } finally {
         setLoading(false);
       }
     };
 
-    init();
-    return () => unsub?.();
-  }, [safeMode]);
+    const cleanup = init();
+    return () => {
+      if (cleanup instanceof Promise) {
+        cleanup.then(fn => fn && fn());
+      }
+    };
+  }, []);
 
-  const enterDemoMode = () => {
-    setAppError(null);
-    setUser({ id: "demo-user", email: "demo@local" });
-    setLoading(false);
-  };
-
-  if (appError && !safeMode) {
+  if (connectionError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-white text-black">
         <div className="max-w-md w-full space-y-4 text-center">
-          <h1 className="text-2xl font-bold">Startup Error</h1>
+          <h1 className="text-2xl font-bold">Connection Error</h1>
           <p className="text-sm text-gray-600 break-all">
-            {appError.message || "Unknown error"}
+            {connectionError}
           </p>
           <div className="flex gap-2 justify-center">
             <button
@@ -178,12 +136,6 @@ const App = () => {
             >
               Reload
             </button>
-            <button
-              className="px-4 py-2 rounded bg-gray-800 text-white"
-              onClick={enterDemoMode}
-            >
-              Continue in Demo Mode
-            </button>
           </div>
         </div>
       </div>
@@ -191,49 +143,24 @@ const App = () => {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  // Safe Mode: render known-good minimal UI without external deps
-  if (safeMode) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="*" element={<SafeLayout />} />
-        </Routes>
-      </BrowserRouter>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!user) {
     return (
+      <AppErrorBoundary>
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <Suspense fallback={
-              <div className="min-h-screen flex items-center justify-center bg-white">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            }>
+            <Suspense fallback={<LoadingSpinner />}>
               <Toaster />
               <Sonner />
               <Auth onAuthChange={setUser} />
-              <div className="text-center mt-6">
-                <button
-                  className="px-4 py-2 rounded bg-gray-800 text-white"
-                  onClick={enterDemoMode}
-                >
-                  Try Demo Mode
-                </button>
-              </div>
             </Suspense>
           </TooltipProvider>
         </QueryClientProvider>
       </ThemeProvider>
+      </AppErrorBoundary>
     );
   }
 
@@ -242,11 +169,7 @@ const App = () => {
       <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <Suspense fallback={
-              <div className="min-h-screen flex items-center justify-center bg-white">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            }>
+            <Suspense fallback={<LoadingSpinner />}>
               <Toaster />
               <Sonner />
               <BrowserRouter>

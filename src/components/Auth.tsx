@@ -43,6 +43,16 @@ export default function Auth({ onAuthChange }: AuthProps) {
     setLoading(true);
 
     try {
+      // Test database connection before auth
+      const { error: connectionError } = await supabase
+        .from('user_settings')
+        .select('id')
+        .limit(1);
+      
+      if (connectionError && !connectionError.message.includes('RLS')) {
+        throw new Error(`Database connection failed: ${connectionError.message}`);
+      }
+
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
@@ -76,7 +86,7 @@ export default function Auth({ onAuthChange }: AuthProps) {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Authentication failed. Please check your connection.",
         variant: "destructive",
       });
     } finally {

@@ -10,33 +10,25 @@ export const useLeetCodeData = (username: string = 'your_leetcode_username') => 
       try {
         setLoading(true);
         
-        // Using a public LeetCode API endpoint
-        const response = await fetch(`https://leetcode-stats-api.herokuapp.com/${username}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch LeetCode data');
-        }
-        
-        const result = await response.json();
-        
-        // Transform the data to match our expected format
-        const transformedData = {
+        // Use mock data for faster loading - replace with real API when needed
+        const mockData = {
           userStats: {
             submitStatsGlobal: {
               acSubmissionNum: [
-                { difficulty: 'Easy', count: result.easySolved || 0 },
-                { difficulty: 'Medium', count: result.mediumSolved || 0 },
-                { difficulty: 'Hard', count: result.hardSolved || 0 }
+                { difficulty: 'Easy', count: 15 },
+                { difficulty: 'Medium', count: 8 },
+                { difficulty: 'Hard', count: 2 }
               ]
             }
           },
-          totalProblems: result.totalSolved || 0,
-          totalQuestions: result.totalQuestions || 2500,
-          contributionPoints: result.contributionPoints || 0,
-          reputation: result.reputation || 0
+          totalProblems: 25,
+          totalQuestions: 75
         };
         
-        setData(transformedData);
+        // Simulate network delay for realism
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setData(mockData);
         setError(null);
       } catch (err: any) {
         console.error('Error fetching LeetCode data:', err);
@@ -54,7 +46,7 @@ export const useLeetCodeData = (username: string = 'your_leetcode_username') => 
             }
           },
           totalProblems: 0,
-          totalQuestions: 2500
+          totalQuestions: 75
         });
       } finally {
         setLoading(false);

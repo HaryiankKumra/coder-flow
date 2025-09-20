@@ -19,12 +19,23 @@ export const useTasks = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = async () => {
+    setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setTasks([]);
         setLoading(false);
         return;
+      }
+
+      // Test connection first
+      const { error: connectionError } = await supabase
+        .from('tasks')
+        .select('id')
+        .limit(1);
+      
+      if (connectionError && !connectionError.message.includes('RLS')) {
+        throw new Error(`Database connection failed: ${connectionError.message}`);
       }
 
       const { data, error } = await supabase
@@ -34,12 +45,14 @@ export const useTasks = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching tasks:', error);
+        console.error('Error fetching tasks:', error.message);
+        throw error;
       } else {
         setTasks(data || []);
       }
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      console.error('Error in fetchTasks:', error);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
