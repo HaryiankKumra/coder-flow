@@ -733,38 +733,43 @@ export type Database = {
       }
       tasks: {
         Row: {
-          id: string
-          title: string
-          description: string | null
-          status: 'pending' | 'in_progress' | 'completed'
-          priority: 'low' | 'medium' | 'high'
           category: string | null
-          due_date: string | null
           created_at: string
+          description: string | null
+          due_date: string | null
+          estimated_duration: number | null
+          id: string
+          priority: string | null
+          status: string
+          title: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          status?: 'pending' | 'in_progress' | 'completed'
-          priority?: 'low' | 'medium' | 'high'
           category?: string | null
-          due_date?: string | null
           created_at?: string
+          description?: string | null
+          due_date?: string | null
+          estimated_duration?: number | null
+          id?: string
+          priority?: string | null
+          status?: string
+          title: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          id?: string
-          title?: string
-          description?: string | null
-          status?: 'pending' | 'in_progress' | 'completed'
-          priority?: 'low' | 'medium' | 'high'
           category?: string | null
+          created_at?: string
+          description?: string | null
           due_date?: string | null
+          estimated_duration?: number | null
+          id?: string
+          priority?: string | null
+          status?: string
+          title?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2600,7 +2605,6 @@ export type Database = {
         Returns: unknown
       }
       st_symmetricdifference: {
-       
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
       }
@@ -2749,7 +2753,7 @@ export type Tables<
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2854,10 +2858,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
   public: {
     Enums: {},
   },
